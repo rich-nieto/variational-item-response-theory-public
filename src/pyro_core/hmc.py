@@ -9,7 +9,8 @@ import warnings
 from tqdm import tqdm
 
 import numpy as np
-from sklearn.neighbors.kde import KernelDensity
+#from sklearn.neighbors.kde import KernelDensity
+from sklearn.neighbors import KernelDensity
 
 import torch
 
@@ -24,13 +25,13 @@ from pyro.poutine.util import site_is_subsample
 from pyro.util import ignore_experimental_warning
 
 from src.pyro_core.models import (
-    irt_model_1pl, 
-    irt_model_2pl, 
+    irt_model_1pl,
+    irt_model_2pl,
     irt_model_3pl,
     irt_model_3pl_hierarchical,
 )
 from src.datasets import (
-    load_dataset, 
+    load_dataset,
     wide_to_long_form,
     artificially_mask_dataset,
 )
@@ -51,8 +52,8 @@ if __name__ == "__main__":
                         help='1pl|2pl|3pl (default: 3pl)')
     parser.add_argument('--dataset', type=str, default='1pl_simulation',
                         choices=[
-                            '1pl_simulation', 
-                            '2pl_simulation', 
+                            '1pl_simulation',
+                            '2pl_simulation',
                             '3pl_simulation',
                             'children_language',
                             'duolingo_language',
@@ -96,7 +97,7 @@ if __name__ == "__main__":
 
         if args.max_num_person is not None:
             args.max_num_person = int(args.max_num_person)
-        
+
         if args.max_num_item is not None:
             args.max_num_item = int(args.max_num_item)
 
@@ -115,12 +116,12 @@ if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy("file_system")
 
     args.out_dir = os.path.join(
-        args.out_dir, 
+        args.out_dir,
         'hmc_{}_{}_{}person_{}item_{}maxperson_{}maxitem_{}ability_{}maskperc_seed{}'.format(
-            args.irt_model, 
-            args.dataset, 
-            args.num_person, 
-            args.num_item, 
+            args.irt_model,
+            args.dataset,
+            args.num_person,
+            args.num_item,
             args.max_num_person,
             args.max_num_item,
             args.ability_dim,
@@ -128,30 +129,30 @@ if __name__ == "__main__":
             args.seed,
         ),
     )
-    
+
     if not os.path.isdir(args.out_dir):
         os.makedirs(args.out_dir)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
     train_dataset = load_dataset(
-        args.dataset, 
-        train = True, 
-        num_person = args.num_person, 
-        num_item = args.num_item, 
-        ability_dim = args.ability_dim, 
+        args.dataset,
+        train = True,
+        num_person = args.num_person,
+        num_item = args.num_item,
+        ability_dim = args.ability_dim,
         nonlinear = args.nonlinear,
         max_num_person = args.max_num_person,
         max_num_item = args.max_num_item,
     )
     num_item = train_dataset.num_item
     num_person = train_dataset.num_person
-   
+
     if args.artificial_missing_perc > 0:
         train_dataset = artificially_mask_dataset(
             train_dataset,
             args.artificial_missing_perc,
-        ) 
+        )
 
     response, mask = train_dataset.response, train_dataset.mask
     response[response == -1] = 0  # filler value within support
@@ -177,14 +178,14 @@ if __name__ == "__main__":
         raise Exception('irt_model {} not supported.'.format(args.irt_model))
 
     init_params, potential_fn, transforms, _ = initialize_model(
-        irt_model, 
+        irt_model,
         model_args=(
-            args.ability_dim, 
-            num_person, 
-            num_item, 
-            device, 
-            response, 
-            mask, 
+            args.ability_dim,
+            num_person,
+            num_item,
+            device,
+            response,
+            mask,
             1,
         ),
         num_chains=args.num_chains,
@@ -202,12 +203,12 @@ if __name__ == "__main__":
         transforms = transforms,
     )
     mcmc.run(
-        args.ability_dim, 
-        num_person, 
-        num_item, 
-        device, 
-        response, 
-        mask, 
+        args.ability_dim,
+        num_person,
+        num_item,
+        device,
+        response,
+        mask,
         1,
     )
     samples = mcmc.get_samples()
@@ -223,14 +224,14 @@ if __name__ == "__main__":
 
     # get posterior predictive samples
     posterior_predict_samples = sample_posterior_predictive(
-        irt_model, 
-        samples, 
-        args.ability_dim, 
-        num_person, 
-        num_item, 
+        irt_model,
+        samples,
+        args.ability_dim,
+        num_person,
+        num_item,
         device,
-        None, 
-        None, 
+        None,
+        None,
         1,
     )
 
